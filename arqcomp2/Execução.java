@@ -10,50 +10,84 @@ public class Execução {
             instrucoes.add(instrucao);
         }
     }
-
     public int calculandoCiclos() {
         if (instrucoes.isEmpty()) return 0;
 
-        int ciclos = 4; 
-        for (int i = 0; i < instrucoes.size(); i++) {
+        final int PIPELINE_ESTAGIOS = 5;
+        Instrucao[] pipeline = new Instrucao[PIPELINE_ESTAGIOS];
+
+        int ciclos = 0;
+        int pc = 0;
+        boolean executando = true;
+
+        while (executando) {
             ciclos++;
 
-            if (i > 0) {
-                Instrucao atual = instrucoes.get(i);
-                Instrucao anterior = instrucoes.get(i - 1);
+            Instrucao instrMem = pipeline[3];
+            boolean loadUseHazard = false;
 
-                String regEscrita = anterior.getRegEscrita();
-                List<String> regsLeitura = atual.getRegsLeitura();
+            if (pc < instrucoes.size() && instrMem != null && instrMem.isL) {
+                Instrucao proxInstrucao = instrucoes.get(pc);
+                String regLoad = instrMem.getRegEscrita();
+                List<String> regsLeitura = proxInstrucao.getRegsLeitura();
 
-                if (regEscrita != null && regsLeitura.contains(regEscrita)) {
-                    if (anterior.isL) {
-                        ciclos++;
-                    }
+                if (regLoad != null && regsLeitura.contains(regLoad)) {
+                    loadUseHazard = true;
                 }
+            }
+
+            for (int i = PIPELINE_ESTAGIOS - 1; i > 0; i--) {
+                pipeline[i] = pipeline[i - 1];
+            }
+
+            if (loadUseHazard) {
+                pipeline[0] = null;
+            } else {
+                if (pc < instrucoes.size()) {
+                    pipeline[0] = instrucoes.get(pc);
+                    pc++;
+                } else {
+                    pipeline[0] = null;
+                }
+            }
+
+            executando = false;
+            for (int i = 0; i < PIPELINE_ESTAGIOS; i++) {
+                if (pipeline[i] != null) {
+                    executando = true;
+                    break;
+                }
+            }
+            if (pc < instrucoes.size()) {
+                executando = true;
+            }
+
+            Instrucao instrWb = pipeline[PIPELINE_ESTAGIOS - 1];
+            if (instrWb != null && instrWb.isD) {
+                ciclos += 2;
             }
         }
 
         return ciclos;
     }
 
-    public List<String> gerarPipelineComBolhas() {
-        List<String> saida = new ArrayList<>();
+    private int calcularHazard(Instrucao anterior, Instrucao atual) {
+        int bolhas = 0;
+        String regEscrita = anterior.getRegEscrita();
+        List<String> regsLeitura = atual.getRegsLeitura();
 
-        for (int i = 0; i < instrucoes.size(); i++) {
-            Instrucao atual = instrucoes.get(i);
-            if (i > 0) {
-                Instrucao anterior = instrucoes.get(i - 1);
-                String regEscrita = anterior.getRegEscrita();
-                List<String> regsLeitura = atual.getRegsLeitura();
-
-                if (regEscrita != null && regsLeitura.contains(regEscrita) && anterior.isL) {
-                    saida.add("NOP"); // Inserir bolha
+        if (regEscrita != null && regsLeitura.contains(regEscrita)) {
+            if (anterior.isL) {
+                if (!atual.isS) {
+                    bolhas = 1;
+                }
+            } else {
+                if (!atual.isS) {
+                    bolhas = 1;
                 }
             }
-            saida.add(atual.instrucaoOriginal);
         }
-
-        return saida;
+        return bolhas;
     }
 
     private static class Instrucao {
