@@ -1,5 +1,3 @@
-package arqcomp;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -14,10 +12,10 @@ public class Main {
         String diretorio = "E:\\";
 
         for (int i = 1; i <= 10; i++) {
-            String numero = String.format("%02d", i); 
+            String numero = String.format("%02d", i);
             String nomeEntrada = "TESTE-" + numero + ".txt";
             String nomeSaida = "TESTE-" + numero + "-RESULTADO.txt";
-            String resultado = "";
+            int resultado = 0;
 
             Path caminhoEntrada = Paths.get(diretorio, nomeEntrada);
             Path caminhoSaida = Paths.get(diretorio, nomeSaida);
@@ -27,12 +25,13 @@ public class Main {
                 BufferedWriter escritor = Files.newBufferedWriter(caminhoSaida, StandardCharsets.UTF_8)
             ){
                 String linha;
+                Execução objeto = new Execução();
                 while ((linha = leitor.readLine()) != null) {
-                    Execucao objeto = new Execucao();
-                    resultado = objeto.decodificarInstrucao(linha);
-                    escritor.write(resultado);
-                    escritor.newLine();
+                    objeto.adicionarInstrucao(linha);
                 }
+                resultado = objeto.calculandoCiclos();
+                escritor.write(String.valueOf(resultado)); 
+                escritor.newLine();
                 System.out.println("Gerado: " + nomeSaida);
 
             } catch (IOException e) {
